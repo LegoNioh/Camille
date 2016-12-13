@@ -11,6 +11,8 @@ canW = true
 CanE = true
 local VP = VPrediction()
 
+local numbers = {["W"] = {name = "CamilleW",rangeBig = 600, rangesmall = 300, projectileSpeed = 800, radiusBig = 750,radiusSmall = 380};
+
 function OnLoad()
     Config = scriptConfig("Cam 6.22", "KK")
     Config:addParam("shoot", "Combo", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
@@ -189,7 +191,7 @@ function Combo()
 			CastQ(Target)
 		end
 		if myHero:CanUseSpell(_W) == READY and canW == true and GetDistance(Target) < wRange and GetDistance(Target) > 300 and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
-			CastW(Target)
+			CastWBig(Target)
 		end
 		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true then
 			SurfBaby2(Target)
@@ -216,13 +218,22 @@ function CastQ()
     end
 end
 
-function CastW(target)
-	if target ~= nil then
-    	local CastPosition, HitChance = VP:GetLineCastPosition(target, 1.25, 70, 600, 1500, myHero, false)
-    	if HitChance >= 1 then
-      		CastSpell(_W, CastPosition.x, CastPosition.z)
-    	end
-	end
+function CastWBig(target)
+
+
+ local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
+     if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
+         CastSpell(_W, CastPosition.x, CastPosition.z)
+end
+end
+
+function CastWSmall(target)
+
+
+ local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 380, 300, 800, myHero, false)
+     if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 300 then
+         CastSpell(_W, CastPosition.x, CastPosition.z)
+end
 end
 
 function CastE2(target)
