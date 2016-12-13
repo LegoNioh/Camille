@@ -77,9 +77,8 @@ function BestTarget(Range)
     	local enemy = GetEnemyHeroes()[i]
     	if enemy ~= nil and not enemy.dead and enemy.bInvulnerable == 0 and enemy.bTargetable and GetDistance(enemy) < Range and enemy.visible then
     		MR = enemy.magicArmor/(100+enemy.magicArmor)
-    		AR = enemy.armor/(100+enemy.armor)
     		HP = enemy.health
-    		TargetValue = HP + AR*HP - (enemy.ap) - (enemy.addDamage*1.2) + (GetDistance(enemy))
+    		TargetValue = HP + MR*HP - (enemy.ap) - (enemy.addDamage*1.2) + (GetDistance(enemy))
     		if TargetValue < BestValue then
     			BestEnemy = enemy
     			BestValue = TargetValue
@@ -310,19 +309,12 @@ function moveBig(target)
 		_G.AutoCarry.MyHero:AttacksEnabled(false)
 		_G.AutoCarry.MyHero:MovementEnabled(false)
 	end
-	if GetDistance(target) < 300 then
-		--local vec = Vector(target.x - myHero.x,target.y - myHero.y,target.z - myHero.z)
-		--vec:normalize()
-		--vec = LenVector(vec,301 - GetDistance(target))
-		--myHero:MoveTo(vec.x + myHero.x,vec.z + myHero.z)
+
 		HeroPos = Vector(myHero.x, myHero.z)
 		TargetPos = Vector(target.x, target.z)
-		MovePos = Vector(HeroPos - (TargetPos-HeroPos):normalized() * 301)
+		MovePos = Vector(TargetPos - (TargetPos-HeroPos):normalized() * 350)
 		myHero:MoveTo(MovePos.x, MovePos.y)
-	elseif GetDistance(target) > 600 then
-		myHero:MoveTo(target.x,target.z)
 	end
-end
 
 
 
