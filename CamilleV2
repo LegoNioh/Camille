@@ -436,10 +436,3 @@ function OnProcessAttack(unit, attack)
 		end
 	end
 end
-
--- Lengthens a vector
-function LenVector(vector,mod)
-
-return Vector(vector.x * mod,vector.y * mod,vector.z * mod)
-
-end
