@@ -11,6 +11,13 @@ canW = true
 CanE = true
 local VP = VPrediction()
 
+-- Bool if Camille follows her target for W
+local follow
+-- If she will follow for big radius
+local big
+-- If she will follow for small radius
+local small
+
 local numbers = {["W"] = {name = "CamilleW",rangeBig = 600, rangesmall = 300, projectileSpeed = 800, radiusBig = 750,radiusSmall = 380}};
 
 function OnLoad()
@@ -191,7 +198,8 @@ function Combo()
 			CastQ(Target)
 		end
 		if myHero:CanUseSpell(_W) == READY and canW == true and GetDistance(Target) < wRange and GetDistance(Target) > 300 and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
-			CastWBig(Target)
+			CastW(Target)
+			followTarget(Target)
 		end
 		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true then
 			SurfBaby2(Target)
@@ -218,6 +226,26 @@ function CastQ()
     end
 end
 
+-- Follow for _W
+function followTarget(target)
+if not follow then return end
+moveBig(ts.target)
+moveSmall(ts.target)
+end
+
+-- Decides which one deals more damage
+function CastW(target)
+
+    if GetWBigDamage(target) > GetWSmallDamage(target) then
+        big = true
+        CastWBig(target)
+        else
+        small = true
+        CastWSmall(target)
+    end
+	
+end
+
 function CastWBig(target)
 
 
@@ -230,10 +258,90 @@ end
 function CastWSmall(target)
 
 
- local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 380, 300, 800, myHero, false)
-     if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 300 then
+ local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 380, 600, 800, myHero, false)
+     if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
          CastSpell(_W, CastPosition.x, CastPosition.z)
 end
+end
+
+-- WSCALE 60%AD
+-- WBASE 65
+-- WPERLEVEL 30
+
+function GetWSmallDamage(target)
+
+if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
+
+local lvl = myHero:GetSpellData(_W).level
+
+local scale = lvl * 30 + 35
+local bonusAd = myHero.addDamage * 0.6
+
+return math.ceil(myHero:CalcDamage(target,scale + bonusAd))
+
+end
+
+
+-- DMGPERLIFELEVEL 0.5%
+-- PERLIFE BASE 6
+-- 3% per 100 ad
+function GetWBigDamage(target)
+
+if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
+
+local lvl = myHero:GetSpellData(_W).level
+
+local healthlevel = (lvl * 0.5 + 5.5) / 100
+local bonusAd = (math.ceil(myHero.addDamage / 100) * 3) / 100
+
+return math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
+
+end
+
+-- Follow to hit with the big W
+function moveBig(target)
+
+if not follow and not big then return end
+
+--_G.AutoCarry.MyHero:AttacksEnabled(false)
+--_G.AutoCarry.MyHero:MovementEnabled(false)
+	
+if GetDistance(target) < 300 then
+
+local vec = Vector(target.x - myHero.x,target.y - myHero.y,target.z - myHero.z)
+vec:normalize()
+
+vec = LenVector(vec,301 - GetDistance(target))
+
+myHero:MoveTo(vec.x + myHero.x,vec.z + myHero.z)
+
+elseif GetDistance(target) > 600 then
+
+myHero:MoveTo(target.x,target.z)
+
+end
+
+-- _G.AutoCarry.MyHero:AttacksEnabled(true)
+--_G.AutoCarry.MyHero:MovementEnabled(true)
+	
+end
+
+-- Follow to hit with the big W
+function moveSmall(target)
+
+if not follow and not small then return end
+
+--_G.AutoCarry.MyHero:AttacksEnabled(false)
+--_G.AutoCarry.MyHero:MovementEnabled(false)
+
+if GetDistance(target) > 300 then
+
+myHero:MoveTo(target.x,target.z)
+
+end
+
+-- _G.AutoCarry.MyHero:AttacksEnabled(true)
+--_G.AutoCarry.MyHero:MovementEnabled(true)
 end
 
 function CastE2(target)
@@ -304,10 +412,22 @@ function OnDeleteObj(obj)
 	if GetDistance(obj) < 1000 then
 		--PrintChat(obj.name)
 	end
+	-- If WCast is over
+    if obj.valid and obj.name:find("Indicator_ally.troy") then 
+
+    follow = false
+    big = false
+    small = false
+
+    end
 end
 
 function OnProcessSpell(unit, spell)
 	if unit == myHero then
+		
+		if spell.name == "CamilleW" then
+			follow = true
+		end
 		if spell.name == "CamilleQ" then
 			DelayAction(function() SaveQ() end, 2.9 - GetLatency() / 2000)
 		end
@@ -333,4 +453,11 @@ function OnProcessAttack(unit, attack)
 			DelayAction(function() CastQ() end, attack.windUpTime - GetLatency() / 2000)
 		end
 	end
+end
+
+-- Lengthens a vector
+function LenVector(vector,mod)
+
+return Vector(vector.x * mod,vector.y * mod,vector.z * mod)
+
 end
