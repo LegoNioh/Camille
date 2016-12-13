@@ -79,8 +79,8 @@ function BestTarget(Range)
     	if enemy ~= nil and not enemy.dead and enemy.bInvulnerable == 0 and enemy.bTargetable and GetDistance(enemy) < Range and enemy.visible then
     		AR = enemy.armor/(100+enemy.armor)
     		HP = enemy.health
-    		TargetValue = HP * 1.3 + AR * 0.4 * HP - (enemy.ap  * 1.35) - (enemy.addDamage* 1.5) + (GetDistance(enemy) * 0.5)
-			targetTest = TargetValue
+    		TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 1.35) - (enemy.addDamage* 1.5) + (GetDistance(enemy) * 0.5) + (myHero.level - enemy.level) * 50
+			targetTest = TargetValue / 100 
     		if TargetValue < BestValue then
     			BestEnemy = enemy
     			BestValue = TargetValue
@@ -204,7 +204,7 @@ function Combo()
 	if Target then
 	
 	followTarget(Target)
-	
+
 		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
 			CastQ(Target)		
 		end
@@ -356,7 +356,7 @@ function OnApplyBuff(Src, Target, Buff)
 		if Buff.name == "camilleeonwall" or Buff.name == "camilleedashtoggle" then
 			if Config.shoot and myHero:CanUseSpell(_W) == READY then
 				--print("should cast W")
-				CastW(Target)
+				--CastW(Target)
 			end
 			stopAll()
 		end
@@ -437,9 +437,3 @@ function OnProcessAttack(unit, attack)
 	end
 end
 
--- Lengthens a vector
-function LenVector(vector,mod)
-
-return Vector(vector.x * mod,vector.y * mod,vector.z * mod)
-
-end
