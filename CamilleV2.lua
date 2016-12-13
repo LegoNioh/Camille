@@ -49,7 +49,7 @@ function OnTick()
 	--Target = targetSelector.target
 	Target = BestTarget(2000)
 	if Target then
-		followTarget(Target)
+		
 		if SAC == true then
 			_G.AutoCarry.Crosshair:ForceTarget(Target)
 		end
@@ -202,6 +202,9 @@ end
 
 function Combo()
 	if Target then
+	
+	followTarget(Target)
+	
 		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
 			CastQ(Target)		
 		end
