@@ -15,8 +15,6 @@ local VP = VPrediction()
 local follow
 -- If she will follow for big radius
 local big
--- If she will follow for small radius
-local small
 
 local numbers = {["W"] = {name = "CamilleW",rangeBig = 600, rangesmall = 300, projectileSpeed = 800, radiusBig = 750,radiusSmall = 380}};
 
@@ -44,7 +42,8 @@ function OnTick()
 	Target = targetSelector.target
 	--Target = BestTarget(900)
 	if Target then
-		_G.AutoCarry.Crosshair:ForceTarget(Target)
+				followTarget(Target)
+		--_G.AutoCarry.Crosshair:ForceTarget(Target)
 	end 
 	--print((GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd)
 	--print(GetSpellData(_E).name)
@@ -86,7 +85,7 @@ function BestTarget(Range)
 end
 
 function ResetAA()
-	_G.AutoCarry.Orbwalker:ResetAttackTimer()
+	--_G.AutoCarry.Orbwalker:ResetAttackTimer()
 	if Target and Config.shoot then
 		myHero:Attack(Target)
 	end
@@ -99,6 +98,8 @@ function OnDraw()
 		DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
 		if Target then 
 			DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
+		    DrawText3D("Big: "..GetWBigDamage(Target),Target.x,Target.y - 100,Target.z,15,ARGB(255,0,0,255))
+			DrawText3D("S: "..GetWSmallDamage(Target),Target.x,Target.y - 200,Target.z,15,ARGB(255,0,0,255))
 		end
 		for i = 1, #GetEnemyHeroes() do
     		local enemy = GetEnemyHeroes()[i]
@@ -194,12 +195,13 @@ end
 
 function Combo()
 	if Target then
-		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then
-			CastQ(Target)
+		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
+			CastQ(Target)		
 		end
 		if myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
 			CastW(Target)
-			followTarget(Target)
+        elseif myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true and Config.settings.comboE1 == false then
+		    CastW(Target)	
 		end
 		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true then
 			SurfBaby2(Target)
@@ -229,21 +231,13 @@ end
 -- Follow for _W
 function followTarget(target)
 if not follow then return end
-moveBig(ts.target)
-moveSmall(ts.target)
+moveBig(target)
 end
 
--- Decides which one deals more damage
 function CastW(target)
 
-    if GetWBigDamage(target) > GetWSmallDamage(target) then
-        big = true
         CastWBig(target)
-        else
-        small = true
-        CastWSmall(target)
-    end
-	
+
 end
 
 function CastWBig(target)
@@ -252,6 +246,9 @@ function CastWBig(target)
  local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
      if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
          CastSpell(_W, CastPosition.x, CastPosition.z)
+		 else
+		 CastWSmall(target)
+
 end
 end
 
@@ -294,7 +291,7 @@ local lvl = myHero:GetSpellData(_W).level
 local healthlevel = (lvl * 0.5 + 5.5) / 100
 local bonusAd = (math.ceil(myHero.addDamage / 100) * 3) / 100
 
-return math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
+return GetWSmallDamage(target) + math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
 
 end
 
@@ -326,23 +323,7 @@ end
 	
 end
 
--- Follow to hit with the big W
-function moveSmall(target)
 
-if not follow and not small then return end
-
---_G.AutoCarry.MyHero:AttacksEnabled(false)
---_G.AutoCarry.MyHero:MovementEnabled(false)
-
-if GetDistance(target) > 300 then
-
-myHero:MoveTo(target.x,target.z)
-
-end
-
--- _G.AutoCarry.MyHero:AttacksEnabled(true)
---_G.AutoCarry.MyHero:MovementEnabled(true)
-end
 
 function CastE2(target)
 	if target ~= nil then
@@ -355,15 +336,15 @@ end
 
 function stopAll()
 	print("stopped")
-    _G.AutoCarry.MyHero:AttacksEnabled(false)
-    _G.AutoCarry.MyHero:MovementEnabled(false)
+    --_G.AutoCarry.MyHero:AttacksEnabled(false)
+    --_G.AutoCarry.MyHero:MovementEnabled(false)
 	DelayAction(function() startAll() end, 1.5)
 end
 
 function startAll()
 	print("started")
-    _G.AutoCarry.MyHero:AttacksEnabled(true)
-    _G.AutoCarry.MyHero:MovementEnabled(true)
+   -- _G.AutoCarry.MyHero:AttacksEnabled(true)
+    --_G.AutoCarry.MyHero:MovementEnabled(true)
 end
 
 
@@ -378,7 +359,7 @@ function OnApplyBuff(Src, Target, Buff)
 		if Buff.name == "camilleeonwall" or Buff.name == "camilleedashtoggle" then
 			if Config.shoot and myHero:CanUseSpell(_W) == READY then
 				--print("should cast W")
-				--CastW(Target)
+				CastW(Target)
 			end
 			stopAll()
 		end
@@ -412,6 +393,7 @@ function OnDeleteObj(obj)
 	if GetDistance(obj) < 1000 then
 		--PrintChat(obj.name)
 	end
+	
 	-- If WCast is over
     if obj.valid and obj.name:find("Indicator_ally.troy") then 
 
@@ -424,8 +406,8 @@ end
 
 function OnProcessSpell(unit, spell)
 	if unit == myHero then
-		
-		if spell.name == "CamilleW" then
+	
+	    if spell.name == "CamilleW" then
 			follow = true
 		end
 		if spell.name == "CamilleQ" then
