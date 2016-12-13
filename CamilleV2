@@ -76,9 +76,9 @@ function BestTarget(Range)
 	for i = 1, #GetEnemyHeroes() do
     	local enemy = GetEnemyHeroes()[i]
     	if enemy ~= nil and not enemy.dead and enemy.bInvulnerable == 0 and enemy.bTargetable and GetDistance(enemy) < Range and enemy.visible then
-    		MR = enemy.magicArmor/(100+enemy.magicArmor)
+    		AR = enemy.armor/(100+enemy.armor)
     		HP = enemy.health
-    		TargetValue = HP + MR*HP - (enemy.ap) - (enemy.addDamage*1.2) + (GetDistance(enemy))
+    		TargetValue = HP + AR*HP - (enemy.ap) - (enemy.addDamage*1.2) + (GetDistance(enemy))
     		if TargetValue < BestValue then
     			BestEnemy = enemy
     			BestValue = TargetValue
