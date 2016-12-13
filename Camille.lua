@@ -197,7 +197,7 @@ function Combo()
 		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then
 			CastQ(Target)
 		end
-		if myHero:CanUseSpell(_W) == READY and canW == true and GetDistance(Target) < wRange and GetDistance(Target) > 300 and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
+		if myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
 			CastW(Target)
 			followTarget(Target)
 		end
