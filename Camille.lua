@@ -11,7 +11,7 @@ canW = true
 CanE = true
 local VP = VPrediction()
 
-local numbers = {["W"] = {name = "CamilleW",rangeBig = 600, rangesmall = 300, projectileSpeed = 800, radiusBig = 750,radiusSmall = 380};
+local numbers = {["W"] = {name = "CamilleW",rangeBig = 600, rangesmall = 300, projectileSpeed = 800, radiusBig = 750,radiusSmall = 380}};
 
 function OnLoad()
     Config = scriptConfig("Cam 6.22", "KK")
