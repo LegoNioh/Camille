@@ -8,6 +8,7 @@ e2Range = 500
 rRange = 475
 CanQ = true
 canW = true
+follow = false
 CanE = true
 SAC = false
 local VP = VPrediction()
@@ -29,9 +30,11 @@ function OnLoad()
     Config.settings:addParam("comboQ", "Start With Q in combo", SCRIPT_PARAM_ONOFF, false)
     Config.settings:addParam("comboQReset", "Reset AA With Q", SCRIPT_PARAM_ONOFF, true)
     Config.settings:addParam("comboW", "Use W in combo", SCRIPT_PARAM_ONOFF, true)
+    Config.settings:addParam("magW", "Magnet W To hit Target", SCRIPT_PARAM_ONOFF, true)
     Config.settings:addParam("comboE1", "Use E1 in combo", SCRIPT_PARAM_ONOFF, true)
     Config.settings:addParam("comboE2", "Use E2 in combo", SCRIPT_PARAM_ONOFF, true)
-    Config.settings:addSubMenu("Hook Settings", "hsettings")
+    Config.settings:addParam("gapE", "Save E for Gap Closer", SCRIPT_PARAM_ONOFF, false)
+    Config.settings:addSubMenu("Hook Performance Settings", "hsettings")
     Config.settings.hsettings:addParam("dirchecks", "Num E Direction Checks", SCRIPT_PARAM_SLICE, 45, 0, 360, 1)
     Config.settings.hsettings:addParam("echecks", "Num E Depth Checks", SCRIPT_PARAM_SLICE, 10, 0, 60, 1)
     Config.settings.hsettings:addParam("drawDots", "Draw Wall Debug", SCRIPT_PARAM_ONOFF, false)
@@ -46,8 +49,8 @@ end
 
 function OnTick()
 	targetSelector:update()
-	--Target = targetSelector.target
-	Target = BestTarget(2000)
+	Target = targetSelector.target
+	--Target = BestTarget(2000)
 	if Target then
 		
 		if SAC == true then
@@ -104,18 +107,23 @@ function ResetAA()
 end
 
 function OnDraw()
-		if Config.settings.hsettings.drawDots then
-			SurfBaby2Draw()
-		end
-		DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
-		if Target then 
-			DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
-		    DrawText3D("Big: "..GetWBigDamage(Target),Target.x,Target.y - 100,Target.z,15,ARGB(255,0,0,255))
-			DrawText3D("S: "..GetWSmallDamage(Target),Target.x,Target.y - 200,Target.z,15,ARGB(255,0,0,255))
-			DrawText3D(tostring(targetTest), Target.x-15, Target.y-30, Target.z, 15,ARGB(255,0,255,0))
-		end
+	if Config.settings.hsettings.drawDots then
+		SurfBaby2Draw()
+	end
+	if follow == true then 
+		--DrawText3D("Follow",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+	else
+		--DrawText3D("Dont Follow",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+	end
+	DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
+	if Target then 
+		DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
+		DrawText3D("Big: "..GetWBigDamage(Target),Target.x,Target.y - 100,Target.z,15,ARGB(255,0,0,255))
+		DrawText3D("S: "..GetWSmallDamage(Target),Target.x,Target.y - 200,Target.z,15,ARGB(255,0,0,255))
+		DrawText3D(tostring(targetTest), Target.x-15, Target.y-30, Target.z, 15,ARGB(255,0,255,0))
+	end
 			
-    	end
+end
    
 
 
@@ -202,19 +210,29 @@ end
 
 function Combo()
 	if Target then
-	
-	followTarget(Target)
+		if Config.settings.magW then
+			followTarget(Target)
+		end
 
 		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
 			CastQ(Target)		
 		end
-		if myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true and GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
+		if myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true then
 			CastW(Target)
-        elseif myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true and Config.settings.comboE1 == false then
-		    CastW(Target)	
+			if GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
+				CastW(Target)
+			elseif Config.settings.comboE1 == false then
+				CastW(Target)
+			end
 		end
-		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true then
-			SurfBaby2(Target)
+		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true and follow == false then
+			if GetDistance(Target) > 225 then
+				if GetDistance(Target) < 550 and Target.ms < myHero.ms and Config.settings.gapE == true then
+
+				else
+					SurfBaby2(Target)
+				end
+			end
 		end
 		if myHero:CanUseSpell(_E) == READY and GetSpellData(_E).name == "CamilleEDash2" and Config.settings.comboE2 == true then
 			CastE2(Target)
@@ -242,16 +260,16 @@ end
 function followTarget(target)
 	if not follow then return end
 		moveBig(target)
-	end
+end
 
-	function CastW(target)
-	    CastWBig(target)
+function CastW(target)
+	if GetDistance(target) > 300 then
+		CastWBig(target)
 	end
+end
 
 function CastWBig(target)
-
-
- local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
+	local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
     if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
         CastSpell(_W, CastPosition.x, CastPosition.z)
 	else
@@ -273,16 +291,11 @@ end
 -- WPERLEVEL 30
 
 function GetWSmallDamage(target)
-
-if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
-
-local lvl = myHero:GetSpellData(_W).level
-
-local scale = lvl * 30 + 35
-local bonusAd = myHero.addDamage * 0.6
-
-return math.ceil(myHero:CalcDamage(target,scale + bonusAd))
-
+	if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
+	local lvl = myHero:GetSpellData(_W).level
+	local scale = lvl * 30 + 35
+	local bonusAd = myHero.addDamage * 0.6
+	return math.ceil(myHero:CalcDamage(target,scale + bonusAd))
 end
 
 
@@ -290,37 +303,33 @@ end
 -- PERLIFE BASE 6
 -- 3% per 100 ad
 function GetWBigDamage(target)
-
-if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
-
-local lvl = myHero:GetSpellData(_W).level
-
-local healthlevel = (lvl * 0.5 + 5.5) / 100
-local bonusAd = (math.ceil(myHero.addDamage / 100) * 3) / 100
-
-return GetWSmallDamage(target) + math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
-
+	if (myHero:CanUseSpell(_W) ~= READY) then return 0 end
+	local lvl = myHero:GetSpellData(_W).level
+	local healthlevel = (lvl * 0.5 + 5.5) / 100
+	local bonusAd = (math.ceil(myHero.addDamage / 100) * 3) / 100
+	return GetWSmallDamage(target) + math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
 end
 
 -- Follow to hit with the big W
 function moveBig(target)
 	if not follow then return end
-	if SAC == true then
-		_G.AutoCarry.MyHero:AttacksEnabled(false)
-		_G.AutoCarry.MyHero:MovementEnabled(false)
-	end
-
+	if GetDistance(target) > 225 then
+		if SAC == true then
+			_G.AutoCarry.MyHero:AttacksEnabled(false)
+			_G.AutoCarry.MyHero:MovementEnabled(false)
+		end
 		HeroPos = Vector(myHero.x, myHero.z)
 		TargetPos = Vector(target.x, target.z)
-		MovePos = Vector(TargetPos - (TargetPos-HeroPos):normalized() * 350)
+		MovePos = Vector(TargetPos - (TargetPos-HeroPos):normalized() * 410)
 		myHero:MoveTo(MovePos.x, MovePos.y)
 	end
+end
 
 
 
 function CastE2(target)
 	if target ~= nil then
-    	local CastPosition, HitChance = VP:GetLineCastPosition(target, 0.25, 70, 1000, 700, myHero, false)
+    	local CastPosition, HitChance = VP:GetLineCastPosition(target, 0.25, 70, 1000, 1000, myHero, false)
     	if HitChance >= 1 then
       		CastSpell(_E, CastPosition.x, CastPosition.z)
     	end
@@ -362,6 +371,7 @@ function OnApplyBuff(Src, Target, Buff)
 		end
 		if Buff.name == "camilleqprimingstart" then
 			CanQ = false
+			CanW = false
 		end
 		if Buff.name == "camilleqprimingcomplete" then
 			CanW = false
@@ -376,6 +386,16 @@ function OnRemoveBuff(Src, Buff)
 		if Buff.name == "camilleeonwall" or Buff.name == "camilleedashtoggle"  then
 			startAll()
 		end
+		-- If WCast is over
+		if Buff.name == "camillewconeslashcharge" then 
+    		if SAC == true then
+				_G.AutoCarry.MyHero:AttacksEnabled(true)
+				_G.AutoCarry.MyHero:MovementEnabled(true)
+			end
+    		follow = false
+    		big = false
+    	end
+		--print(Buff.name)
 	end
 end
 
@@ -390,18 +410,6 @@ function OnDeleteObj(obj)
 	if GetDistance(obj) < 1000 then
 		--PrintChat(obj.name)
 	end
-	
-	-- If WCast is over
-    if obj.valid and obj.name:find("Indicator_ally.troy") then 
-
-    if SAC == true then
-		_G.AutoCarry.MyHero:AttacksEnabled(true)
-		_G.AutoCarry.MyHero:MovementEnabled(true)
-	end
-    follow = false
-    big = false
-
-    end
 end
 
 function OnProcessSpell(unit, spell)
@@ -436,4 +444,3 @@ function OnProcessAttack(unit, attack)
 		end
 	end
 end
-
