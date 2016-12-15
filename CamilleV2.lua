@@ -12,6 +12,8 @@ WCasting = false
 WMagnet = false
 IsDashing = false
 QPriming = false
+QCharged = false
+MagnetBlock = false
 local VP = VPrediction()
 
 local targetTest
@@ -49,9 +51,9 @@ function OnLoad()
 end
 
 function OnTick()
-	targetSelector:update()
-	Target = targetSelector.target
-	--Target = BestTarget(2000)
+	--targetSelector:update()
+	--Target = targetSelector.target
+	Target = BestTarget(2000)
 	if Target then	
 		if SAC == true then
 			_G.AutoCarry.Crosshair:ForceTarget(Target)
@@ -77,7 +79,7 @@ function BestTarget(Range)
     	if enemy ~= nil and not enemy.dead and enemy.bInvulnerable == 0 and enemy.bTargetable and GetDistance(enemy) < Range and enemy.visible then
     		AR = enemy.armor/(100+enemy.armor)
     		HP = enemy.health
-    		TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 1.35) - (enemy.addDamage* 1.5) + (GetDistance(enemy) * 0.5) + (myHero.level - enemy.level) * 50
+    		TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 2) - (enemy.addDamage* 3) + (GetDistance(enemy) * 0.5) - (myHero.level - enemy.level) * 50
 			targetTest = TargetValue / 100 
     		if TargetValue < BestValue then
     			BestEnemy = enemy
@@ -91,6 +93,27 @@ function BestTarget(Range)
     	return nil
     end
 end
+function BestTargetDraw(Range)
+	local BestValue = 1000000
+	local BestEnemy = nil
+	for i = 1, #GetEnemyHeroes() do
+    	local enemy = GetEnemyHeroes()[i]
+    	if enemy ~= nil and not enemy.dead and enemy.bInvulnerable == 0 and enemy.bTargetable and GetDistance(enemy) < Range and enemy.visible then
+    		local AR = enemy.armor/(100+enemy.armor)
+    		local HP = enemy.health
+    		local TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 2) - (enemy.addDamage* 3) + (GetDistance(enemy) * 0.5) - (myHero.level - enemy.level) * 50
+			DrawText3D(tostring(TargetValue), enemy.x-15, enemy.y-30, enemy.z, 15,ARGB(255,0,255,0))
+    		if TargetValue < BestValue then
+    			BestEnemy = enemy
+    			BestValue = TargetValue
+    		end
+    	end
+    end
+    if BestEnemy then
+    	DrawText3D("Target!!", BestEnemy.x-15, BestEnemy.y-60, BestEnemy.z, 25,ARGB(255,0,255,0))
+    end
+end
+
 
 function OnDraw()
 	if Config.settings.hsettings.drawDots then
@@ -116,15 +139,22 @@ function OnDraw()
 	else
 		DrawText3D("Not Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
 	end
+	if QPriming == true then
+		DrawText3D("Q Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
+	else
+		DrawText3D("Not Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
+	end
+	if QCharged== true then
+		DrawText3D("Q Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
+	else
+		DrawText3D("Not Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
+	end
 
 	DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
 	if Target then 
 		DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
-		DrawText3D("Big: "..GetWBigDamage(Target),Target.x,Target.y - 100,Target.z,15,ARGB(255,0,0,255))
-		DrawText3D("S: "..GetWSmallDamage(Target),Target.x,Target.y - 200,Target.z,15,ARGB(255,0,0,255))
-		DrawText3D(tostring(targetTest), Target.x-15, Target.y-30, Target.z, 15,ARGB(255,0,255,0))
 	end
-			
+	BestTargetDraw(1000)	
 end
 
 function Combo()
@@ -160,10 +190,11 @@ function SaveQ()
 			--print("saved Q")
 			CastSpell(_Q)
 			ResetAA()
+			QPriming = false
 	end
 end
 function CheckWCast()
-	if myHero:CanUseSpell(_W) == READY and QPriming == false and IsDashing == false and Config.settings.comboW == true then
+	if myHero:CanUseSpell(_W) == READY and QPriming == false and QCharged == false and IsDashing == false and Config.settings.comboW == true then
 		CastW(Target)
 	end
 end
@@ -193,7 +224,7 @@ end
 
 -- Follow to hit with the big W
 function moveBig(target)
-	if GetDistance(target) > 225 and GetDistance(target) < 825 and OnWall == false then
+	if GetDistance(target) > 225 and GetDistance(target) < 825 and OnWall == false and MagnetBlock == false then
 		WMagnet = true
 		HeroPos = Vector(myHero.x, myHero.z)
 		TargetPos = Vector(target.x, target.z)
@@ -208,12 +239,29 @@ function CastW(target)
 	if GetDistance(target) > 300 then
 		CastWBig(target)
 	end
+	if myHero:CanUseSpell(_E) ~= READY and myHero:CanUseSpell(_Q) ~= READY then
+		CastWSmall(target)
+	end 
 end
 
+function CastWSmall(target)
+	if target ~= nil then
+		local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
+    	if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
+        	CastSpell(_W, CastPosition.x, CastPosition.z)
+        	MagnetBlock = true
+		end
+	end
+end
+
+
+
 function CastWBig(target)
-	local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
-    if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
-        CastSpell(_W, CastPosition.x, CastPosition.z)
+	if target ~= nil then
+		local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
+    	if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
+        	CastSpell(_W, CastPosition.x, CastPosition.z)
+		end
 	end
 end
 
@@ -379,8 +427,8 @@ function OnApplyBuff(Src, Target, Buff)
 			QPriming = true
 		end
 		if Buff.name == "camilleqprimingcomplete" then
-			QPriming = false
 			QCharged = true
+			QPriming = false
 		end
 		if Buff.name == "camillewconeslashcharge" then 
 			WCasting = true
@@ -398,28 +446,38 @@ function OnRemoveBuff(Src, Buff)
 		if Buff.name == "camillewconeslashcharge" then 
 			WCasting = false
 			WMagnet = false
+			MagnetBlock = false
+    	end
+    	if Buff.name == "CamilleQ2" then
+    		QCharged = false
     	end
 		--print(Buff.name)
 	end
 end
 
 function OnCreateObj(obj)
-	if GetDistance(obj) < 1000 then
+	if GetDistance(obj) < 50 then
 		--PrintChat(obj.name)
 	end
 end
 
 
 function OnDeleteObj(obj)
-	if GetDistance(obj) < 1000 then
+	if GetDistance(obj) < 50 then
 		--PrintChat(obj.name)
 	end
 end
 
 function OnProcessSpell(unit, spell)
 	if unit == myHero then
+		--print(spell.name)
 		if spell.name == "CamilleQ" then
 			DelayAction(function() SaveQ() end, 2.9 - GetLatency() / 2000)
+			QPriming = false
+		end
+		if spell.name == "CamilleQ2" then
+			QPriming = false
+			QCharged = false
 		end
 		if spell.name == "CamilleE" then
 			IsDashing = true
