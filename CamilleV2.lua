@@ -6,11 +6,12 @@ wRange = 600
 eRange = 925
 e2Range = 500
 rRange = 475
-CanQ = true
-canW = true
-follow = false
-CanE = true
 SAC = false
+OnWall = false
+WCasting = false
+WMagnet = false
+IsDashing = false
+QPriming = false
 local VP = VPrediction()
 
 local targetTest
@@ -51,20 +52,14 @@ function OnTick()
 	targetSelector:update()
 	Target = targetSelector.target
 	--Target = BestTarget(2000)
-	if Target then
-		
+	if Target then	
 		if SAC == true then
 			_G.AutoCarry.Crosshair:ForceTarget(Target)
 		end
-	end 
-	--print((GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd)
-	--print(GetSpellData(_E).name)
-	--print(GetSpellData(_E).currentCd)
+	end
+	controlOrb()
 	if Config.shoot then
 		Combo()
-	end
-	if myHero:CanUseSpell(_Q) ~= READY then
-		canW = true
 	end
 	if Config.ult and Target then
 		if GetDistance(Target) < rRange then
@@ -97,24 +92,31 @@ function BestTarget(Range)
     end
 end
 
-function ResetAA()
-	if SAC == true then
-		_G.AutoCarry.Orbwalker:ResetAttackTimer()
-	end
-	if Target and Config.shoot then
-		myHero:Attack(Target)
-	end
-end
-
 function OnDraw()
 	if Config.settings.hsettings.drawDots then
 		SurfBaby2Draw()
 	end
-	if follow == true then 
-		--DrawText3D("Follow",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+	if WCasting == true or OnWall == true then
+		DrawText3D("SAC Disabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
 	else
-		--DrawText3D("Dont Follow",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+		DrawText3D("SAC Enabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
 	end
+	if WCasting == true then
+		DrawText3D("W Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
+	else
+		DrawText3D("W Not Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
+	end
+	if OnWall == true then
+		DrawText3D("On A Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
+	else
+		DrawText3D("Away From Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
+	end
+	if IsDashing == true then
+		DrawText3D("Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
+	else
+		DrawText3D("Not Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
+	end
+
 	DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
 	if Target then 
 		DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
@@ -124,8 +126,106 @@ function OnDraw()
 	end
 			
 end
-   
 
+function Combo()
+	if Target then
+		if Config.settings.magW then
+			followTarget(Target)
+		end
+		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
+			CastQ(Target)		
+		end
+		if WCasting == false and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true then
+			if GetDistance(Target) > 225 then
+				if GetDistance(Target) < 550 and Target.ms < myHero.ms and Config.settings.gapE == true then
+
+				else
+					SurfBaby2(Target)
+				end
+			end
+		end
+		if myHero:CanUseSpell(_E) == READY then
+			DelayAction(function() CheckWCast() end, 0.1)
+		else
+			CheckWCast()
+		end
+		if myHero:CanUseSpell(_E) == READY and GetSpellData(_E).name == "CamilleEDash2" and Config.settings.comboE2 == true then
+			CastE2(Target)
+		end
+	end
+end
+
+function SaveQ() 
+	if GetSpellData(_Q).name == "CamilleQ2" and myHero:CanUseSpell(_Q) == READY then
+			--print("saved Q")
+			CastSpell(_Q)
+			ResetAA()
+	end
+end
+function CheckWCast()
+	if myHero:CanUseSpell(_W) == READY and QPriming == false and IsDashing == false and Config.settings.comboW == true then
+		CastW(Target)
+	end
+end
+
+function CastQ()
+	if QPriming == false and Config.settings.comboQReset then
+   		CastSpell(_Q)
+    	ResetAA()
+    end
+end
+
+function ResetAA()
+	if SAC == true then
+		_G.AutoCarry.Orbwalker:ResetAttackTimer()
+	end
+	if Target and Config.shoot then
+		myHero:Attack(Target)
+	end
+end
+
+-- Follow for _W
+function followTarget(target)
+	if WCasting == true then
+		moveBig(target)
+	end
+end
+
+-- Follow to hit with the big W
+function moveBig(target)
+	if GetDistance(target) > 225 and GetDistance(target) < 825 and OnWall == false then
+		WMagnet = true
+		HeroPos = Vector(myHero.x, myHero.z)
+		TargetPos = Vector(target.x, target.z)
+		MovePos = Vector(TargetPos - (TargetPos-HeroPos):normalized() * 410)
+		myHero:MoveTo(MovePos.x, MovePos.y)
+	else
+		WMagnet = false
+	end
+end
+
+function CastW(target)
+	if GetDistance(target) > 300 then
+		CastWBig(target)
+	end
+end
+
+function CastWBig(target)
+	local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
+    if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
+        CastSpell(_W, CastPosition.x, CastPosition.z)
+	end
+end
+
+
+function CastE2(target)
+	if target ~= nil then
+    	local CastPosition, HitChance = VP:GetLineCastPosition(target, 0.25, 70, 1000, 1000, myHero, false)
+    	if HitChance >= 1 then
+      		CastSpell(_E, CastPosition.x, CastPosition.z)
+    	end
+	end
+end
 
 function SurfBaby2Draw()
 	local Distance = 1000
@@ -202,88 +302,32 @@ function GetDirectionFrom(FromPos, TooPos, Angle)
 	end
 end
 
-
 function MoveToOrb()
 		return mousePos
 end
 
-
-function Combo()
-	if Target then
-		if Config.settings.magW then
-			followTarget(Target)
-		end
-
-		if myHero:CanUseSpell(_Q) == READY and GetDistance(Target) < qRange and Config.settings.comboQ == true then	    
-			CastQ(Target)		
-		end
-		if myHero:CanUseSpell(_W) == READY and canW == true and Config.settings.comboW == true then
-			CastW(Target)
-			if GetSpellData(_E).currentCd > 0 and (GetSpellData(_E).cd + GetSpellData(_E).cd*myHero.cdr)-GetSpellData(_E).currentCd > 1 then
-				CastW(Target)
-			elseif Config.settings.comboE1 == false then
-				CastW(Target)
-			end
-		end
-		if CanE == true and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true and canW == true and follow == false then
-			if GetDistance(Target) > 225 then
-				if GetDistance(Target) < 550 and Target.ms < myHero.ms and Config.settings.gapE == true then
-
-				else
-					SurfBaby2(Target)
-				end
-			end
-		end
-		if myHero:CanUseSpell(_E) == READY and GetSpellData(_E).name == "CamilleEDash2" and Config.settings.comboE2 == true then
-			CastE2(Target)
-		end
-	end
+function controlOrb()
+	if WMagnet == true or OnWall == true then
+		stopAll()
+	else
+		startAll()
+	end 
 end
 
-function SaveQ() 
-	if GetSpellData(_Q).name == "CamilleQ2" and myHero:CanUseSpell(_Q) == READY then
-			--print("saved Q")
-			CastSpell(_Q)
-			ResetAA()
-	end
-end
-
-
-function CastQ()
-	if CanQ == true and Config.settings.comboQReset then
-   		CastSpell(_Q)
-    	ResetAA()
+function stopAll()
+	--print("stopped")
+	if SAC == true then
+    	_G.AutoCarry.MyHero:AttacksEnabled(false)
+    	_G.AutoCarry.MyHero:MovementEnabled(false)
     end
 end
 
--- Follow for _W
-function followTarget(target)
-	if not follow then return end
-		moveBig(target)
-end
-
-function CastW(target)
-	if GetDistance(target) > 300 then
-		CastWBig(target)
-	end
-end
-
-function CastWBig(target)
-	local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
-    if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
-        CastSpell(_W, CastPosition.x, CastPosition.z)
-	else
-		CastWSmall(target)
-	end
-end
-
-function CastWSmall(target)
-
-
-local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 380, 600, 800, myHero, false)
-    if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
-        CastSpell(_W, CastPosition.x, CastPosition.z)
-	end
+function startAll()
+	--print("started")
+	if SAC == true then
+    	_G.AutoCarry.MyHero:AttacksEnabled(true)
+    	_G.AutoCarry.MyHero:MovementEnabled(true)
+    end
 end
 
 -- WSCALE 60%AD
@@ -310,49 +354,15 @@ function GetWBigDamage(target)
 	return GetWSmallDamage(target) + math.ceil(myHero:CalcDamage(target,target.maxHealth * (healthlevel + bonusAd)))
 end
 
--- Follow to hit with the big W
-function moveBig(target)
-	if not follow then return end
-	if GetDistance(target) > 225 then
-		if SAC == true then
-			_G.AutoCarry.MyHero:AttacksEnabled(false)
-			_G.AutoCarry.MyHero:MovementEnabled(false)
-		end
-		HeroPos = Vector(myHero.x, myHero.z)
-		TargetPos = Vector(target.x, target.z)
-		MovePos = Vector(TargetPos - (TargetPos-HeroPos):normalized() * 410)
-		myHero:MoveTo(MovePos.x, MovePos.y)
-	end
-end
-
-
-
-function CastE2(target)
-	if target ~= nil then
-    	local CastPosition, HitChance = VP:GetLineCastPosition(target, 0.25, 70, 1000, 1000, myHero, false)
-    	if HitChance >= 1 then
-      		CastSpell(_E, CastPosition.x, CastPosition.z)
-    	end
-	end
-end
-
-function stopAll()
-	--print("stopped")
-	if SAC == true then
-    	_G.AutoCarry.MyHero:AttacksEnabled(false)
-    	_G.AutoCarry.MyHero:MovementEnabled(false)
-    end
-	DelayAction(function() startAll() end, 1.5)
-end
-
-function startAll()
-	--print("started")
-	if SAC == true then
-    	_G.AutoCarry.MyHero:AttacksEnabled(true)
-    	_G.AutoCarry.MyHero:MovementEnabled(true)
+function OnAnimation(unit, animation)
+    if unit.isMe then
+        if animation == "Spell3" or animation == "Spell3_Dash1" or animation == "Spell3_Wall" or animation == "Spell3_Dash2_short" then
+            IsDashing = true
+        elseif IsDashing and (animation == "Idle1" or animation == "Run") then
+            IsDashing = false
+        end
     end
 end
-
 
 function OnUpdateBuff(Src, Buff, iStacks)
 	if Src == myHero then
@@ -363,20 +373,18 @@ end
 function OnApplyBuff(Src, Target, Buff)
 	if Src == myHero then
 		if Buff.name == "camilleeonwall" or Buff.name == "camilleedashtoggle" then
-			if Config.shoot and myHero:CanUseSpell(_W) == READY then
-				--print("should cast W")
-				--CastW(Target)
-			end
-			stopAll()
+			OnWall = true
 		end
 		if Buff.name == "camilleqprimingstart" then
-			CanQ = false
-			CanW = false
+			QPriming = true
 		end
 		if Buff.name == "camilleqprimingcomplete" then
-			CanW = false
-			CanQ = true
+			QPriming = false
+			QCharged = true
 		end
+		if Buff.name == "camillewconeslashcharge" then 
+			WCasting = true
+    	end
 		--print(Buff.name)
 	end
 end
@@ -384,16 +392,12 @@ end
 function OnRemoveBuff(Src, Buff)
 	if Src == myHero then
 		if Buff.name == "camilleeonwall" or Buff.name == "camilleedashtoggle"  then
-			startAll()
+			OnWall = false
 		end
 		-- If WCast is over
 		if Buff.name == "camillewconeslashcharge" then 
-    		if SAC == true then
-				_G.AutoCarry.MyHero:AttacksEnabled(true)
-				_G.AutoCarry.MyHero:MovementEnabled(true)
-			end
-    		follow = false
-    		big = false
+			WCasting = false
+			WMagnet = false
     	end
 		--print(Buff.name)
 	end
@@ -414,21 +418,11 @@ end
 
 function OnProcessSpell(unit, spell)
 	if unit == myHero then
-	
-	    if spell.name == "CamilleW" then
-			follow = true
-		end
 		if spell.name == "CamilleQ" then
 			DelayAction(function() SaveQ() end, 2.9 - GetLatency() / 2000)
 		end
-		if spell.name == "CamilleQ2" then
-			CanQ = true
-		end
 		if spell.name == "CamilleE" then
-			stopAll()
-		end
-		if spell.name == "CamilleEDash2" then
-			startAll()
+			IsDashing = true
 		end
 	end
 end
