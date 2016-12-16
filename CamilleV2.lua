@@ -14,6 +14,7 @@ IsDashing = false
 QPriming = false
 QCharged = false
 MagnetBlock = false
+UltPos = nil
 local VP = VPrediction()
 
 local targetTest
@@ -149,7 +150,10 @@ function OnDraw()
 	else
 		DrawText3D("Not Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
 	end
-
+	if Ultpos ~= nil then
+		DrawText3D("Ult Point Found",myHero.x, myHero.y+185, myHero.z,15,ARGB(255,0,0,255))
+		DrawCircle(Ultpos.x, Ultpos.y, Ultpos.z, 475, ARGB(255,255,255,255))
+	end
 	DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
 	if Target then 
 		DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
@@ -240,7 +244,7 @@ function CastW(target)
 		CastWBig(target)
 	end
 	if myHero:CanUseSpell(_E) ~= READY and myHero:CanUseSpell(_Q) ~= READY then
-		CastWSmall(target)
+		--CastWSmall(target)
 	end 
 end
 
@@ -296,7 +300,13 @@ function SurfBaby2Draw()
 			CheckPoint = myHero + Direction * CheckD*j
 			WallPoint = IsWall(D3DXVECTOR3(CheckPoint.x, CheckPoint.y, CheckPoint.z))
 			if WallPoint then
-				DrawCircle(CheckPoint.x, CheckPoint.y, CheckPoint.z, 12, ARGB(255,255,255,255))
+				if Ultpos then
+					if GetDistance(CheckPoint, Ultpos) < 475 then
+						DrawCircle(CheckPoint.x, CheckPoint.y, CheckPoint.z, 12, ARGB(255,255,255,255))
+					end
+				else
+					DrawCircle(CheckPoint.x, CheckPoint.y, CheckPoint.z, 12, ARGB(255,255,255,255))
+				end
 				break
 			end
 		end
@@ -326,14 +336,20 @@ function SurfBaby2(Target)
 			WallPoint = IsWall(D3DXVECTOR3(CheckPoint.x, CheckPoint.y, CheckPoint.z))
 			if WallPoint then
 				if GetDistance(Target, CheckPoint) < GetDistance(Target, ClosePoint) or ClosePoint == nil then
-					ClosePoint = CheckPoint
+					if Ultpos then
+						if GetDistance(CheckPoint, Ultpos) < 475 then
+							ClosePoint = CheckPoint
+						end
+					else
+						ClosePoint = CheckPoint
+					end
 				end 
 				break
 			end
 		end
 	end
 
-	if GetSpellData(_E).name == "CamilleE" and ClosePoint and GetDistance(Target, ClosePoint) < 750 then
+	if GetSpellData(_E).name == "CamilleE" and ClosePoint and GetDistance(Target, ClosePoint) < 850 then
 		CastSpell(_E, ClosePoint.x, ClosePoint.z)
 	end
 end
@@ -451,6 +467,9 @@ function OnRemoveBuff(Src, Buff)
     	if Buff.name == "CamilleQ2" then
     		QCharged = false
     	end
+    	if Buff.name == "camillerrange" then
+    		Ultpos = nil
+    	end
 		--print(Buff.name)
 	end
 end
@@ -458,6 +477,9 @@ end
 function OnCreateObj(obj)
 	if GetDistance(obj) < 50 then
 		--PrintChat(obj.name)
+		if obj.name == "Camille_Base_R_tar.troy" then
+			Ultpos = obj
+		end
 	end
 end
 
