@@ -1,7 +1,7 @@
 if myHero.charName ~= "Camille" then return end
 require "VPrediction"
 ultActive = false
-qRange = 125
+qRange = 225
 wRange = 600
 eRange = 925
 e2Range = 500
@@ -15,6 +15,7 @@ QPriming = false
 QCharged = false
 MagnetBlock = false
 UltPos = nil
+turrets = {}
 local VP = VPrediction()
 
 local targetTest
@@ -30,6 +31,7 @@ function OnLoad()
     Config:addParam("shoot", "Combo", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
     Config:addParam("ult", "Cast R On Target", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("R"))
     Config:addParam("flee", "Flee", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("T"))
+    Config:addParam("DEBUG", "DEBUG DRAWS", SCRIPT_PARAM_ONOFF, true)
     Config:addSubMenu("Combo Settings", "settings")
     Config.settings:addParam("comboQ", "Start With Q in combo", SCRIPT_PARAM_ONOFF, false)
     Config.settings:addParam("comboQReset", "Reset AA With Q", SCRIPT_PARAM_ONOFF, true)
@@ -55,12 +57,18 @@ function OnTick()
 	--targetSelector:update()
 	--Target = targetSelector.target
 	Target = BestTarget(2000)
+	StoreTurrets()
 	if Target then	
 		if SAC == true then
 			_G.AutoCarry.Crosshair:ForceTarget(Target)
 		end
 	end
 	controlOrb()
+	--print(GetSpellData(_Q).name)
+	if GetSpellData(_Q).name == "CamilleQ" then
+		QPriming = false
+		QCharged = false
+	end
 	if Config.shoot then
 		Combo()
 	end
@@ -69,6 +77,34 @@ function OnTick()
 			CastSpell(_R, Target)
 		end
 	end
+end
+
+function StoreTurrets()
+	--turrets = {}
+    for i = 1, objManager.maxObjects do
+        local object = objManager:getObject(i)
+        if object ~= nil and object.type == "obj_AI_Turret" and object.team ~= myHero.team then
+        	    local turretName = object.name
+                turrets[turretName] = {object}
+        end
+    end
+end
+
+function StopDive(unit)
+    for i = 1, objManager.maxObjects do
+        local object = objManager:getObject(i)
+        if object ~= nil and object.type == "obj_AI_Turret" and object.team ~= myHero.team then
+        	if GetDistance(unit, object) < 950 then
+        		if GetDistance(mousePos, object) < 950 then
+        			return false
+        		else
+        			return true
+        		end
+        	else
+        		return false
+        	end
+        end
+    end
 end
 
 function BestTarget(Range)
@@ -83,8 +119,10 @@ function BestTarget(Range)
     		TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 2) - (enemy.addDamage* 3) + (GetDistance(enemy) * 0.5) - (myHero.level - enemy.level) * 50
 			targetTest = TargetValue / 100 
     		if TargetValue < BestValue then
-    			BestEnemy = enemy
-    			BestValue = TargetValue
+    			if not StopDive(enemy) then
+    				BestEnemy = enemy
+    				BestValue = TargetValue
+    			end
     		end
     	end
     end
@@ -104,9 +142,16 @@ function BestTargetDraw(Range)
     		local HP = enemy.health
     		local TargetValue = HP * 0.8 + AR * HP - (enemy.ap  * 2) - (enemy.addDamage* 3) + (GetDistance(enemy) * 0.5) - (myHero.level - enemy.level) * 50
 			DrawText3D(tostring(TargetValue), enemy.x-15, enemy.y-30, enemy.z, 15,ARGB(255,0,255,0))
+			if StopDive(enemy) then
+				DrawText3D("Dive Not Okay", enemy.x-15, enemy.y-130, enemy.z, 15,ARGB(255,0,255,0))
+			else
+				DrawText3D("Dive Okay", enemy.x-15, enemy.y-130, enemy.z, 15,ARGB(255,0,255,0))
+			end
     		if TargetValue < BestValue then
-    			BestEnemy = enemy
-    			BestValue = TargetValue
+    			if not StopDive(enemy) then
+    				BestEnemy = enemy
+    				BestValue = TargetValue
+    			end
     		end
     	end
     end
@@ -120,45 +165,53 @@ function OnDraw()
 	if Config.settings.hsettings.drawDots then
 		SurfBaby2Draw()
 	end
-	if WCasting == true or OnWall == true then
-		DrawText3D("SAC Disabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("SAC Enabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+	if Config.DEBUG then
+		if WCasting == true or OnWall == true then
+			DrawText3D("SAC Disabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("SAC Enabled",myHero.x, myHero.y, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if WCasting == true then
+			DrawText3D("W Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("W Not Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if OnWall == true then
+			DrawText3D("On A Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("Away From Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if IsDashing == true then
+			DrawText3D("Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("Not Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if QPriming == true then
+			DrawText3D("Q Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("Not Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if QCharged== true then
+			DrawText3D("Q Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
+		else
+			DrawText3D("Not Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
+		end
+		if Ultpos ~= nil then
+			DrawText3D("Ult Point Found",myHero.x, myHero.y+185, myHero.z,15,ARGB(255,0,0,255))
+			DrawCircle(Ultpos.x, Ultpos.y, Ultpos.z, 475, ARGB(255,255,255,255))
+		end
+		local curspos = GetCursorPos()
+		DrawCircle(mousePos.x, mousePos.y, mousePos.z, 100, ARGB(255,255,255,255))
 	end
-	if WCasting == true then
-		DrawText3D("W Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("W Not Casting",myHero.x, myHero.y+35, myHero.z,15,ARGB(255,0,0,255))
-	end
-	if OnWall == true then
-		DrawText3D("On A Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("Away From Wall",myHero.x, myHero.y+65, myHero.z,15,ARGB(255,0,0,255))
-	end
-	if IsDashing == true then
-		DrawText3D("Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("Not Dashing",myHero.x, myHero.y+95, myHero.z,15,ARGB(255,0,0,255))
-	end
-	if QPriming == true then
-		DrawText3D("Q Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("Not Priming",myHero.x, myHero.y+125, myHero.z,15,ARGB(255,0,0,255))
-	end
-	if QCharged== true then
-		DrawText3D("Q Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
-	else
-		DrawText3D("Not Charged",myHero.x, myHero.y+155, myHero.z,15,ARGB(255,0,0,255))
-	end
-	if Ultpos ~= nil then
-		DrawText3D("Ult Point Found",myHero.x, myHero.y+185, myHero.z,15,ARGB(255,0,0,255))
-		DrawCircle(Ultpos.x, Ultpos.y, Ultpos.z, 475, ARGB(255,255,255,255))
+	for i = 1, #turrets do
+	    local turret = turrets[i]
+	    DrawCircle(turret.x, turret.y, turret.z, 950, ARGB(255,255,255,255))
 	end
 	DrawCircle(myHero.x, myHero.y, myHero.z, Config.rangetest, ARGB(255,255,255,255))
 	if Target then 
 		DrawCircle(Target.x, Target.y, Target.z, 50, ARGB(255,255,255,255))
 	end
-	BestTargetDraw(1000)	
+	BestTargetDraw(3000)	
 end
 
 function Combo()
@@ -170,7 +223,7 @@ function Combo()
 			CastQ(Target)		
 		end
 		if WCasting == false and myHero:CanUseSpell(_E) == READY and Config.settings.comboE1 == true then
-			if GetDistance(Target) > 225 then
+			if GetDistance(Target) > 205 then
 				if GetDistance(Target) < 550 and Target.ms < myHero.ms and Config.settings.gapE == true then
 
 				else
@@ -228,7 +281,7 @@ end
 
 -- Follow to hit with the big W
 function moveBig(target)
-	if GetDistance(target) > 225 and GetDistance(target) < 825 and OnWall == false and MagnetBlock == false then
+	if GetDistance(target) > 255 and GetDistance(target) < 825 and OnWall == false and MagnetBlock == false then
 		WMagnet = true
 		HeroPos = Vector(myHero.x, myHero.z)
 		TargetPos = Vector(target.x, target.z)
@@ -240,7 +293,7 @@ function moveBig(target)
 end
 
 function CastW(target)
-	if GetDistance(target) > 300 then
+	if GetDistance(target) > 225 then
 		CastWBig(target)
 	end
 	if myHero:CanUseSpell(_E) ~= READY and myHero:CanUseSpell(_Q) ~= READY then
@@ -258,12 +311,17 @@ function CastWSmall(target)
 	end
 end
 
+function CastWbasic(target)
+	if GetDistance(target) < 650 then
+		CastSpell(_W, CastPosition.x, CastPosition.z)
+	end
+end
 
 
 function CastWBig(target)
 	if target ~= nil then
-		local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 600, 800, myHero, false)
-    	if CastPosition and HitChance >= 2 and GetDistance(CastPosition) < 600 then
+		local CastPosition, HitChance, Position = VP:GetLineCastPosition(target, 0, 750, 650, 800, myHero, false)
+    	if HitChance >= 1 then
         	CastSpell(_W, CastPosition.x, CastPosition.z)
 		end
 	end
@@ -493,6 +551,7 @@ end
 function OnProcessSpell(unit, spell)
 	if unit == myHero then
 		--print(spell.name)
+		--print(spell.target.charName)
 		if spell.name == "CamilleQ" then
 			DelayAction(function() SaveQ() end, 2.9 - GetLatency() / 2000)
 			QPriming = false
@@ -503,6 +562,44 @@ function OnProcessSpell(unit, spell)
 		end
 		if spell.name == "CamilleE" then
 			IsDashing = true
+		end
+	end
+	if unit.team ~= myHero.team then
+		if spell.name == "RivenIzunaBlade" and GetDistance(spell.endPos) < 100 then
+			if myHero:CanUseSpell(_R) == READY then
+				if Target then
+					CastSpell(_R, Target)
+				else
+					CastSpell(_R, unit)
+				end
+			end
+		end
+		for i = 1, #TargetSpells do
+	    	local CheckSpell = TargetSpells[i]
+    		if spell.name == CheckSpell then
+	    		--if GetDistance(spell.endPos) < 10 then
+    			if spell.name == "KarthusFallenOne" then
+	    			DelayAction(function() AvoidUlt(unit) end, 2.5)
+    			elseif spell.target == myHero then
+	    			print(spell.name)
+    				print("Found")
+    				if spell.name == "zedult" then
+	    				DelayAction(function() AvoidUlt(unit) end, 0.74)
+    				else
+	    				AvoidUlt()
+    				end
+    			end
+    		end
+    	end
+    end
+end
+
+function AvoidUlt(unit)
+    if myHero:CanUseSpell(_R) == READY then
+		if Target and GetDistance(Target) < rRange then
+			CastSpell(_R, Target)
+		elseif unit and GetDistance(unit) < rRange then
+			CastSpell(_R, unit)
 		end
 	end
 end
@@ -518,3 +615,5 @@ function OnProcessAttack(unit, attack)
 		end
 	end
 end
+
+TargetSpells = {"InfiniteDuress", "IreliaEquilibriumStrike", "BlindMonkRKick", "VolibearW", "RyzeW", "SyndraR", "VeigarPrimordialBurst", "ViR","NocturneUnspeakableHorror","DariusExecute","GarenR","TristanaR","AlZaharNetherGrasp","LissandraR","Feast","VayneCondemn","zedult","KarthusFallenOne","tahmkenchw","BrandWildfire","LuluWTwo"}
